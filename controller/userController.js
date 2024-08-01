@@ -25,6 +25,7 @@ const userRegistration = async (req, res) => {
                 if (password === password_confirmation) {
 
                     try {
+                        //Hashed password
                         const salt = await bcrypt.genSalt(10);
                         const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -35,8 +36,13 @@ const userRegistration = async (req, res) => {
                         })
 
                         await savedUser.save();
-                        res.status(201).json({ message: savedUser });
-                        console.log("New User saved");
+
+                        //JWT token
+                        const saved_user = await userModel.findOne({ email: email });
+                        const token = jwt.sign({ id: saved_user._id }, process.env.JWT_SECRET, { expiresIn: '5d' });
+
+                        res.status(201).json({ message: "Registration Success", savedUser, "token": token });
+                        console.log("Registration Success");
                     } catch (error) {
                         res.status(400).json({ error: "internal server error" });
                         console.log(error.message);
@@ -62,9 +68,14 @@ const userLogin = async (req, res) => {
         if (email && password) {
             const user = await userModel.findOne({ email: email });
             if (user != null) {
+                //Compare password
                 const isMatch = await bcrypt.compare(password, user.password);
                 if ((user.email === email) && isMatch) {
-                    res.status(200).json({ message: "login successful" })
+
+                    //JWT token
+                    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '5d' });
+
+                    res.status(200).json({ message: "login successful", "token": token });
                     console.log("Successfully logged in");
                 }
                 else {
